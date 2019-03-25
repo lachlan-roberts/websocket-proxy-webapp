@@ -2,6 +2,8 @@ package com.acme;
 
 import java.io.IOException;
 import java.net.URI;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
@@ -16,20 +18,31 @@ import org.eclipse.jetty.websocket.api.annotations.OnWebSocketError;
 import org.eclipse.jetty.websocket.api.annotations.OnWebSocketMessage;
 import org.eclipse.jetty.websocket.api.annotations.WebSocket;
 import org.eclipse.jetty.websocket.client.WebSocketClient;
+import org.eclipse.jetty.websocket.core.ExtensionConfig;
 import org.eclipse.jetty.websocket.servlet.WebSocketCreator;
 import org.eclipse.jetty.websocket.servlet.WebSocketServlet;
 import org.eclipse.jetty.websocket.servlet.WebSocketServletFactory;
 
 public class WebSocketForwardingServlet extends WebSocketServlet
 {
-    WebSocketClient client;
-    URI serverUri;
+    private WebSocketClient client;
+    private URI serverUri;
 
     public void configure(WebSocketServletFactory factory)
     {
         try
         {
-            WebSocketCreator creator = (req, resp) -> new ForwardingSocket(client, serverUri);
+            WebSocketCreator creator = (req, resp) ->
+            {
+                // This is to test passing a core class to websocket-servlet which is provided by the server
+                List<ExtensionConfig> configs = new ArrayList<>();
+                for (ExtensionConfig config : req.getExtensions())
+                    configs.add(ExtensionConfig.parse(config.getParameterizedName()));
+                resp.setExtensions(configs);
+
+                return new ForwardingSocket(client, serverUri);
+            };
+
             factory.setCreator(creator);
         }
         catch (Throwable t)
