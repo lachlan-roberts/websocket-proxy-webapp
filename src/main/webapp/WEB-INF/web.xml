@@ -7,6 +7,16 @@
   <display-name>Test WebApp</display-name>
 
   <servlet>
+    <servlet-name>Echo</servlet-name>
+    <servlet-class>com.acme.EchoServlet</servlet-class>
+    <load-on-startup>1</load-on-startup>
+  </servlet>
+  <servlet-mapping>
+    <servlet-name>Echo</servlet-name>
+    <url-pattern>/echo</url-pattern>
+  </servlet-mapping>
+
+  <servlet>
     <servlet-name>Forwarding</servlet-name>
     <servlet-class>com.acme.WebSocketForwardingServlet</servlet-class>
     <load-on-startup>1</load-on-startup>
