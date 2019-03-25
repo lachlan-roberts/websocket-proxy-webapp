@@ -12,17 +12,29 @@ import org.eclipse.jetty.websocket.api.annotations.WebSocket;
 @WebSocket
 public class ClientSocket
 {
+    private final String name;
     public CountDownLatch closed = new CountDownLatch(1);
 
     private String behavior;
     private Session session;
+
+
+    public ClientSocket()
+    {
+        this(ClientSocket.class.getSimpleName());
+    }
+
+    public ClientSocket(String name)
+    {
+        this.name = name;
+    }
 
     @OnWebSocketConnect
     public void onOpen(Session session)
     {
         behavior = session.getPolicy().getBehavior().name();
         this.session = session;
-        System.err.println(toString() + " Socket Connected: " + session);
+        System.err.println(toString() + " onOpen(): " + session);
     }
 
     @OnWebSocketMessage
@@ -34,21 +46,21 @@ public class ClientSocket
     @OnWebSocketClose
     public void onClose(int statusCode, String reason)
     {
-        System.err.println(toString() + " Socket Closed: " + statusCode + ":" + reason);
+        System.err.println(toString() + " onClose(): " + statusCode + ":" + reason);
         closed.countDown();
     }
 
     @OnWebSocketError
     public void onError(Throwable cause)
     {
-        System.err.println("[ClientSocket] onError(): " + cause);
+        System.err.println(toString() + " onError(): " + cause);
         cause.printStackTrace(System.err);
     }
 
     @Override
     public String toString()
     {
-        return String.format("[%s@%s]", behavior, Integer.toHexString(hashCode()));
+        return String.format("[%s]", name);
     }
 
     public Session getSession()

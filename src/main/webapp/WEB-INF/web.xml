@@ -16,7 +16,6 @@
     <url-pattern>/forward</url-pattern>
   </servlet-mapping>
 
-
   <servlet>
     <servlet-name>Stdout</servlet-name>
     <servlet-class>com.acme.WebSocketStdoutServlet</servlet-class>

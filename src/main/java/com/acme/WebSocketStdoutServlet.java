@@ -16,7 +16,6 @@ public class WebSocketStdoutServlet extends WebSocketServlet
         factory.setCreator(creator);
     }
 
-
     @WebSocket
     public static class StdoutSocket
     {

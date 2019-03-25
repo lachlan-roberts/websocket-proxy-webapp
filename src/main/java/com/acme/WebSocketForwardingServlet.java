@@ -2,13 +2,14 @@ package com.acme;
 
 import java.io.IOException;
 import java.net.URI;
+import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
+import javax.servlet.ServletConfig;
 import javax.servlet.ServletException;
 
 import org.eclipse.jetty.websocket.api.Session;
-import org.eclipse.jetty.websocket.api.StatusCode;
 import org.eclipse.jetty.websocket.api.annotations.OnWebSocketClose;
 import org.eclipse.jetty.websocket.api.annotations.OnWebSocketConnect;
 import org.eclipse.jetty.websocket.api.annotations.OnWebSocketError;
@@ -21,35 +22,26 @@ import org.eclipse.jetty.websocket.servlet.WebSocketServletFactory;
 
 public class WebSocketForwardingServlet extends WebSocketServlet
 {
+    WebSocketClient client;
+    URI serverUri;
 
     public void configure(WebSocketServletFactory factory)
     {
-        WebSocketCreator creator = (req, resp) -> new ForwardingSocket(client, serverUri);
-        factory.setCreator(creator);
-    }
-
-    WebSocketClient client = new WebSocketClient();
-    URI serverUri;
-
-    @Override
-    public void init() throws ServletException
-    {
-        super.init();
-
         try
         {
-            client.start();
-            serverUri = new URI("ws://localhost:8080/test/stdout");
+            WebSocketCreator creator = (req, resp) -> new ForwardingSocket(client, serverUri);
+            factory.setCreator(creator);
         }
-        catch (Exception e)
+        catch (Throwable t)
         {
-            throw new ServletException(e);
+            t.printStackTrace();
         }
     }
 
     @Override
     public void destroy()
     {
+        super.destroy();
         try
         {
             client.stop();
@@ -58,8 +50,23 @@ public class WebSocketForwardingServlet extends WebSocketServlet
         {
             e.printStackTrace();
         }
+    }
 
-        super.destroy();
+    @Override
+    public void init(ServletConfig config) throws ServletException
+    {
+        try
+        {
+            client = new WebSocketClient();
+            client.start();
+            serverUri = new URI("ws://localhost:8080/test/stdout");
+        }
+        catch (Throwable e)
+        {
+            throw new ServletException(e);
+        }
+
+        super.init(config);
     }
 
     @WebSocket
@@ -71,22 +78,23 @@ public class WebSocketForwardingServlet extends WebSocketServlet
 
         public ForwardingSocket(WebSocketClient client, URI serverUri)
         {
-            this.client = client;
-            this.serverUri = serverUri;
+            this.client = Objects.requireNonNull(client);
+            this.serverUri = Objects.requireNonNull(serverUri);
         }
 
         @OnWebSocketConnect
         public void onOpen(Session session)
         {
+            System.err.println("[ForwardingSocket] onOpen: " + session);
             try
             {
-                clientSocket = new ClientSocket();
+                clientSocket = new ClientSocket("ForwardingSocketClient");
                 CompletableFuture<Session> connect = client.connect(clientSocket, serverUri);
                 connect.get(5, TimeUnit.SECONDS);
             }
-            catch (Exception e)
+            catch (Throwable t)
             {
-                session.close(StatusCode.SERVER_ERROR, e.getMessage());
+                throw new RuntimeException(t);
             }
         }
 
@@ -95,22 +103,12 @@ public class WebSocketForwardingServlet extends WebSocketServlet
         {
             try
             {
-                if (message.contains("/close"))
-                {
-                    System.err.println("[ForwardingSocket] sendingClose: " + message);
-                    session.close();
-                    clientSocket.getSession().close();
-                }
-                else
-                {
-                    System.err.println("[ForwardingSocket] onMessage: " + message);
-                    clientSocket.getSession().getRemote().sendString(message);
-                }
+                System.err.println("[ForwardingSocket] onMessage: " + message);
+                clientSocket.getSession().getRemote().sendString(message);
             }
             catch (IOException e)
             {
-                session.close(StatusCode.SERVER_ERROR, e.getMessage());
-                clientSocket.getSession().close(StatusCode.SERVER_ERROR, e.getMessage());
+                throw new RuntimeException(e);
             }
         }
 
@@ -119,6 +117,14 @@ public class WebSocketForwardingServlet extends WebSocketServlet
         {
             System.err.println("[ForwardingSocket] onClosed: " + statusCode + ":" + reason);
             clientSocket.getSession().close();
+            try
+            {
+                clientSocket.closed.await(10,TimeUnit.SECONDS);
+            }
+            catch (InterruptedException e)
+            {
+                e.printStackTrace();
+            }
         }
 
         @OnWebSocketError

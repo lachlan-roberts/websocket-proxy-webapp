@@ -14,8 +14,7 @@
       function getKeyCode(ev) { if (window.event) return window.event.keyCode; return ev.keyCode; } 
       
       var room = {
-        join: function(name) {
-          this._username=name;
+        join: function() {
           var location = document.location.toString().replace('http://','ws://').replace('https://','wss://');
           this._ws=new WebSocket(location + 'forward');
           this._ws.onopen=this._onopen;
@@ -24,55 +23,57 @@
         },
         
         _onopen: function(){
-          $('join').className='hidden';
-          $('joined').className='';
+          $('connect').className='hidden';
+          $('connected').className='';
           $('phrase').focus();
-          room._send(room._username,'has joined!');
         },
         
-        _send: function(user,message){
-          user=user.replace(':','_');
+        _send: function(message){
           if (this._ws)
-            this._ws.send(user+':'+message);
+            this._ws.send(message);
+        },
+
+        _close: function(message){
+          if (this._ws)
+            this._ws.close(1000, 'Client Initiated Close');
         },
       
-        chat: function(text) {
-          if (text != null && text.length>0 )
-              room._send(room._username,text);
+        display: function(header, text){
+          if (text == null)
+            text='';
+          else
+            text=text.replace('<','&lt;').replace('>','&gt;');
+
+          var chat=$('chat');
+          var spanFrom = document.createElement('span');
+          spanFrom.className='from';
+          spanFrom.innerHTML=header+':&nbsp;';
+          var spanText = document.createElement('span');
+          spanText.className='text';
+          spanText.innerHTML=text;
+          var lineBreak = document.createElement('br');
+          chat.appendChild(spanFrom);
+          chat.appendChild(spanText);
+          chat.appendChild(lineBreak);
+          chat.scrollTop = chat.scrollHeight - chat.clientHeight;
         },
         
         _onmessage: function(m) {
           if (m.data){
-            var c=m.data.indexOf(':');
-            var from=m.data.substring(0,c).replace('<','&lt;').replace('>','&gt;');
-            var text=m.data.substring(c+1).replace('<','&lt;').replace('>','&gt;');
-            
-            var chat=$('chat');
-            var spanFrom = document.createElement('span');
-            spanFrom.className='from';
-            spanFrom.innerHTML=from+':&nbsp;';
-            var spanText = document.createElement('span');
-            spanText.className='text';
-            spanText.innerHTML=text;
-            var lineBreak = document.createElement('br');
-            chat.appendChild(spanFrom);
-            chat.appendChild(spanText);
-            chat.appendChild(lineBreak);
-            chat.scrollTop = chat.scrollHeight - chat.clientHeight;   
+            room.display('Received', m.data);
           }
         },
         
         _onclose: function(m) {
           this._ws=null;
-          $('join').className='';
-          $('joined').className='hidden';
-          $('username').focus();
+          $('connect').className='';
+          $('connected').className='hidden';
           $('chat').innerHTML='';
         }
         
       };
-      
     </script>
+
     <style type='text/css'>
     div { border: 0px solid black; }
     div#chat { clear: both; width: 40em; height: 4ex; overflow: auto; background-color: #f0f0f0; padding: 4px; border: 1px solid black; }
@@ -86,22 +87,49 @@
 </head><body>
 <div id='chat'></div>
 <div id='input'>
-  <div id='join' >
-    Username:&nbsp;<input id='username' type='text'/>
-      <input id='joinB' class='button' type='submit' name='join' value='Join'/>
+  <div id='connect' >
+    <input id='connectB' class='button' type='submit' name='connect' value='Connect'/>
   </div>
-  <div id='joined' class='hidden'>
-    Chat:&nbsp;<input id='phrase' type='text'/>
-    <input id='sendB' class='button' type='submit' name='join' value='Send'/>
+  <div id='connected' class='hidden'>
+    Message:&nbsp;<input id='phrase' type='text'/>
+    <input id='sendB' class='button' type='submit' name='join' value='Send'/><input id='closeB' class='button' type='submit' name='close' value='Close'/>
   </div>
 </div>
+
 <script type='text/javascript'>
-$('username').setAttribute('autocomplete','OFF');
-$('username').onkeyup = function(ev) { var keyc=getKeyCode(ev); if (keyc==13 || keyc==10) { room.join($F('username')); return false; } return true; } ;
-$('joinB').onclick = function(event) { room.join($F('username')); return false; };
+$('connectB').onclick = function(event)
+{
+    room.join();
+    return false;
+};
+
 $('phrase').setAttribute('autocomplete','OFF');
-$('phrase').onkeyup = function(ev) {   var keyc=getKeyCode(ev); if (keyc==13 || keyc==10) { room.chat($F('phrase')); $('phrase').value=''; return false; } return true; };
-$('sendB').onclick = function(event) { room.chat($F('phrase')); $('phrase').value=''; return false; };
+$('phrase').onkeyup = function(ev)
+{
+    var keyc=getKeyCode(ev);
+    if (keyc==13 || keyc==10)
+    {
+        room._send($F('phrase'));
+        $('phrase').value='';
+        return false;
+    }
+    return true;
+};
+
+$('sendB').onclick = function(event)
+{
+    room._send($F('phrase'));
+    $('phrase').value='';
+    return false;
+};
+
+
+$('closeB').onclick = function(event)
+{
+    room._close();
+    return false;
+};
+
 </script>
 </body></html>
         

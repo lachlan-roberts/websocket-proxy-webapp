@@ -31,21 +31,9 @@ import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.websocket.api.Session;
 import org.eclipse.jetty.websocket.client.WebSocketClient;
 import org.eclipse.jetty.websocket.server.JettyWebSocketServletContainerInitializer;
-import org.eclipse.jetty.websocket.servlet.WebSocketServlet;
-import org.eclipse.jetty.websocket.servlet.WebSocketServletFactory;
 
 public class JettyWebSocketTest
 {
-
-
-    public static class MyWebSocketServlet extends WebSocketServlet
-    {
-        @Override
-        public void configure(WebSocketServletFactory factory)
-        {
-            factory.addMapping("/",(req, resp)->new ClientSocket());
-        }
-    }
 
 
     public static void main(String[] args) throws Exception
@@ -56,21 +44,21 @@ public class JettyWebSocketTest
         server.addConnector(connector);
 
         ServletContextHandler contextHandler = new ServletContextHandler(ServletContextHandler.SESSIONS);
-        contextHandler.setContextPath("/");
+        contextHandler.setContextPath("/test/");
         server.setHandler(contextHandler);
 
         contextHandler.addServlet(WebSocketStdoutServlet.class, "/stdout");
         contextHandler.addServlet(WebSocketForwardingServlet.class, "/forward");
 
         WebSocketClient client = new WebSocketClient();
-        JettyWebSocketServletContainerInitializer.configure(contextHandler);
+        JettyWebSocketServletContainerInitializer.configureContext(contextHandler);
 
         try
         {
             server.start();
             client.start();
 
-            URI uri = URI.create("ws://localhost:8080/forward");
+            URI uri = URI.create("ws://localhost:8080/test/forward");
             ClientSocket socket = new ClientSocket();
             CompletableFuture<Session> connect = client.connect(socket, uri);
             try(Session session = connect.get(5, TimeUnit.SECONDS))
@@ -78,13 +66,19 @@ public class JettyWebSocketTest
                 session.getRemote().sendString("hello world");
             }
 
-            if(!socket.closed.await(10, TimeUnit.SECONDS))
+            if(!socket.closed.await(5, TimeUnit.SECONDS))
                 throw new IllegalStateException();
         }
         finally
         {
-            client.stop();
-            server.stop();
+            try
+            {
+                client.stop();
+            }
+            finally
+            {
+                server.stop();
+            }
         }
     }
 }
