@@ -36,6 +36,16 @@
     <url-pattern>/echo</url-pattern>
   </servlet-mapping>
 
+  <servlet>
+    <servlet-name>Proxy</servlet-name>
+    <servlet-class>com.acme.WebSocketProxyServlet</servlet-class>
+    <load-on-startup>1</load-on-startup>
+  </servlet>
+  <servlet-mapping>
+    <servlet-name>Proxy</servlet-name>
+    <url-pattern>/proxy</url-pattern>
+  </servlet-mapping>
+
   <error-page>
     <error-code>404</error-code>
     <location>/error404.html</location>

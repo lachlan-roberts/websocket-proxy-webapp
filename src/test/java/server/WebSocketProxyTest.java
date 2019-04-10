@@ -22,8 +22,8 @@ import java.net.URI;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
-import com.acme.ClientSocket;
 import com.acme.EchoServlet;
+import com.acme.TrackingSocket;
 import com.acme.WebSocketProxyServlet;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.ServerConnector;
@@ -34,8 +34,6 @@ import org.eclipse.jetty.websocket.server.JettyWebSocketServletContainerInitiali
 
 public class WebSocketProxyTest
 {
-
-
     public static void main(String[] args) throws Exception
     {
         Server server = new Server();
@@ -59,7 +57,7 @@ public class WebSocketProxyTest
             client.start();
 
             URI uri = URI.create("ws://localhost:8080/test/proxy");
-            ClientSocket socket = new ClientSocket();
+            TrackingSocket socket = new TrackingSocket();
             CompletableFuture<Session> connect = client.connect(socket, uri);
             try(Session session = connect.get(5, TimeUnit.SECONDS))
             {
@@ -71,14 +69,8 @@ public class WebSocketProxyTest
         }
         finally
         {
-            try
-            {
-                client.stop();
-            }
-            finally
-            {
-                server.stop();
-            }
+            client.stop();
+            server.stop();
         }
     }
 }

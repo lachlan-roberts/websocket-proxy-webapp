@@ -635,7 +635,6 @@ class WebSocketProxy
         }
     }
 
-
     private static Callback doubleCallback(Callback callback1, Callback callback2)
     {
         return Callback.from(()->
