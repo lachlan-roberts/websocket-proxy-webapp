@@ -22,9 +22,9 @@ import java.net.URI;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
-import com.acme.ClientSocket;
+import com.acme.StdoutServlet;
+import com.acme.TrackingSocket;
 import com.acme.WebSocketForwardingServlet;
-import com.acme.WebSocketStdoutServlet;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.ServerConnector;
 import org.eclipse.jetty.servlet.ServletContextHandler;
@@ -34,8 +34,6 @@ import org.eclipse.jetty.websocket.server.JettyWebSocketServletContainerInitiali
 
 public class JettyWebSocketTest
 {
-
-
     public static void main(String[] args) throws Exception
     {
         Server server = new Server();
@@ -47,7 +45,7 @@ public class JettyWebSocketTest
         contextHandler.setContextPath("/test/");
         server.setHandler(contextHandler);
 
-        contextHandler.addServlet(WebSocketStdoutServlet.class, "/stdout");
+        contextHandler.addServlet(StdoutServlet.class, "/stdout");
         contextHandler.addServlet(WebSocketForwardingServlet.class, "/forward");
 
         WebSocketClient client = new WebSocketClient();
@@ -59,7 +57,8 @@ public class JettyWebSocketTest
             client.start();
 
             URI uri = URI.create("ws://localhost:8080/test/forward");
-            ClientSocket socket = new ClientSocket();
+            TrackingSocket socket = new TrackingSocket();
+
             CompletableFuture<Session> connect = client.connect(socket, uri);
             try(Session session = connect.get(5, TimeUnit.SECONDS))
             {

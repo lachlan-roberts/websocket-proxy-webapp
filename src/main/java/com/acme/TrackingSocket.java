@@ -2,6 +2,8 @@ package com.acme;
 
 import java.util.concurrent.CountDownLatch;
 
+import org.eclipse.jetty.util.log.Log;
+import org.eclipse.jetty.util.log.Logger;
 import org.eclipse.jetty.websocket.api.Session;
 import org.eclipse.jetty.websocket.api.annotations.OnWebSocketClose;
 import org.eclipse.jetty.websocket.api.annotations.OnWebSocketConnect;
@@ -10,61 +12,58 @@ import org.eclipse.jetty.websocket.api.annotations.OnWebSocketMessage;
 import org.eclipse.jetty.websocket.api.annotations.WebSocket;
 
 @WebSocket
-public class ClientSocket
+public class TrackingSocket
 {
+    private static final Logger LOG = Log.getLogger(TrackingSocket.class);
+
     private final String name;
+    private Session session;
     public CountDownLatch closed = new CountDownLatch(1);
 
-    private String behavior;
-    private Session session;
-
-
-    public ClientSocket()
+    public TrackingSocket()
     {
-        this(ClientSocket.class.getSimpleName());
+        this(TrackingSocket.class.getSimpleName());
     }
 
-    public ClientSocket(String name)
+    public TrackingSocket(String name)
     {
         this.name = name;
+    }
+
+    public Session getSession()
+    {
+        return session;
     }
 
     @OnWebSocketConnect
     public void onOpen(Session session)
     {
-        behavior = session.getPolicy().getBehavior().name();
+        LOG.info(toString()+"onOpen():  " + session);
         this.session = session;
-        System.err.println(toString() + " onOpen(): " + session);
     }
 
     @OnWebSocketMessage
     public void onMessage(String message)
     {
-        System.err.println(toString() + " Received TEXT message: " + message);
+        LOG.info(toString()+"onMessage():  " + message);
     }
 
     @OnWebSocketClose
-    public void onClose(int statusCode, String reason)
+    public void onClosed(int statusCode, String reason)
     {
-        System.err.println(toString() + " onClose(): " + statusCode + ":" + reason);
+        LOG.info(toString()+"onClose():  " + statusCode + ":" + reason);
         closed.countDown();
     }
 
     @OnWebSocketError
     public void onError(Throwable cause)
     {
-        System.err.println(toString() + " onError(): " + cause);
-        cause.printStackTrace(System.err);
+        LOG.warn(toString()+"onError():  " + cause);
     }
 
     @Override
     public String toString()
     {
-        return String.format("[%s]", name);
-    }
-
-    public Session getSession()
-    {
-        return session;
+        return "["+name+"] ";
     }
 }

@@ -12,29 +12,25 @@ import javax.servlet.ServletConfig;
 import javax.servlet.ServletException;
 
 import org.eclipse.jetty.websocket.api.Session;
-import org.eclipse.jetty.websocket.api.annotations.OnWebSocketClose;
-import org.eclipse.jetty.websocket.api.annotations.OnWebSocketConnect;
-import org.eclipse.jetty.websocket.api.annotations.OnWebSocketError;
-import org.eclipse.jetty.websocket.api.annotations.OnWebSocketMessage;
+import org.eclipse.jetty.websocket.api.StatusCode;
 import org.eclipse.jetty.websocket.api.annotations.WebSocket;
+import org.eclipse.jetty.websocket.api.extensions.ExtensionConfig;
 import org.eclipse.jetty.websocket.client.WebSocketClient;
-import org.eclipse.jetty.websocket.core.ExtensionConfig;
-import org.eclipse.jetty.websocket.servlet.WebSocketCreator;
-import org.eclipse.jetty.websocket.servlet.WebSocketServlet;
-import org.eclipse.jetty.websocket.servlet.WebSocketServletFactory;
+import org.eclipse.jetty.websocket.server.JettyWebSocketCreator;
+import org.eclipse.jetty.websocket.server.JettyWebSocketServlet;
+import org.eclipse.jetty.websocket.server.JettyWebSocketServletFactory;
 
-public class WebSocketForwardingServlet extends WebSocketServlet
+public class WebSocketForwardingServlet extends JettyWebSocketServlet
 {
     private WebSocketClient client;
     private URI serverUri;
 
-    public void configure(WebSocketServletFactory factory)
+    public void configure(JettyWebSocketServletFactory factory)
     {
         try
         {
-            WebSocketCreator creator = (req, resp) ->
+            JettyWebSocketCreator creator = (req, resp) ->
             {
-                // This is to test passing a core class to websocket-servlet which is provided by the server
                 List<ExtensionConfig> configs = new ArrayList<>();
                 for (ExtensionConfig config : req.getExtensions())
                     configs.add(ExtensionConfig.parse(config.getParameterizedName()));
@@ -83,25 +79,28 @@ public class WebSocketForwardingServlet extends WebSocketServlet
     }
 
     @WebSocket
-    public static class ForwardingSocket
+    public static class ForwardingSocket extends TrackingSocket
     {
         private final WebSocketClient client;
         private final URI serverUri;
-        private ClientSocket clientSocket;
+        private TrackingSocket clientSocket;
 
         public ForwardingSocket(WebSocketClient client, URI serverUri)
         {
+            super(ForwardingSocket.class.getSimpleName());
             this.client = Objects.requireNonNull(client);
             this.serverUri = Objects.requireNonNull(serverUri);
         }
 
-        @OnWebSocketConnect
+        @Override
         public void onOpen(Session session)
         {
-            System.err.println("[ForwardingSocket] onOpen: " + session);
+            super.onOpen(session);
+
             try
             {
-                clientSocket = new ClientSocket("ForwardingSocketClient");
+                clientSocket = new TrackingSocket("ForwardingSocketClient");
+
                 CompletableFuture<Session> connect = client.connect(clientSocket, serverUri);
                 connect.get(5, TimeUnit.SECONDS);
             }
@@ -111,12 +110,13 @@ public class WebSocketForwardingServlet extends WebSocketServlet
             }
         }
 
-        @OnWebSocketMessage
-        public void onMessage(Session session, String message)
+        @Override
+        public void onMessage(String message)
         {
+            super.onMessage(message);
+
             try
             {
-                System.err.println("[ForwardingSocket] onMessage: " + message);
                 clientSocket.getSession().getRemote().sendString(message);
             }
             catch (IOException e)
@@ -125,11 +125,12 @@ public class WebSocketForwardingServlet extends WebSocketServlet
             }
         }
 
-        @OnWebSocketClose
+        @Override
         public void onClosed(int statusCode, String reason)
         {
-            System.err.println("[ForwardingSocket] onClosed: " + statusCode + ":" + reason);
-            clientSocket.getSession().close();
+            super.onClosed(statusCode, reason);
+
+            clientSocket.getSession().close(StatusCode.NORMAL, "forwarding initiated close to stdout");
             try
             {
                 clientSocket.closed.await(10,TimeUnit.SECONDS);
@@ -138,13 +139,6 @@ public class WebSocketForwardingServlet extends WebSocketServlet
             {
                 e.printStackTrace();
             }
-        }
-
-        @OnWebSocketError
-        public void onError(Throwable error)
-        {
-            System.err.println("[ForwardingSocket] onError: " + error);
-            error.printStackTrace(System.err);
         }
     }
 }

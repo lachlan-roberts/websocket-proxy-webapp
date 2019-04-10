@@ -7,13 +7,13 @@
   <display-name>Test WebApp</display-name>
 
   <servlet>
-    <servlet-name>Echo</servlet-name>
-    <servlet-class>com.acme.EchoServlet</servlet-class>
+    <servlet-name>Stdout</servlet-name>
+    <servlet-class>com.acme.StdoutServlet</servlet-class>
     <load-on-startup>1</load-on-startup>
   </servlet>
   <servlet-mapping>
-    <servlet-name>Echo</servlet-name>
-    <url-pattern>/echo</url-pattern>
+    <servlet-name>Stdout</servlet-name>
+    <url-pattern>/stdout</url-pattern>
   </servlet-mapping>
 
   <servlet>
@@ -27,13 +27,13 @@
   </servlet-mapping>
 
   <servlet>
-    <servlet-name>Stdout</servlet-name>
-    <servlet-class>com.acme.WebSocketStdoutServlet</servlet-class>
+    <servlet-name>Echo</servlet-name>
+    <servlet-class>com.acme.EchoServlet</servlet-class>
     <load-on-startup>1</load-on-startup>
   </servlet>
   <servlet-mapping>
-    <servlet-name>Stdout</servlet-name>
-    <url-pattern>/stdout</url-pattern>
+    <servlet-name>Echo</servlet-name>
+    <url-pattern>/echo</url-pattern>
   </servlet-mapping>
 
   <error-page>
